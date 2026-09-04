@@ -2,6 +2,8 @@
 
 [English](README.en.md) · [安装指南](docs/installation.md) · [兼容性](docs/compatibility.md) · [开发指南](CONTRIBUTING.md)
 
+**本插件由Codex完成**
+
 通过 DSH Web 的同一端口，在浏览器或本机桌面 VSCode 中编辑远程工作目录。VSCode 保存直接写回服务器，无需额外建立 VSCode Remote SSH 连接。
 
 本仓库包含两个发布包：
