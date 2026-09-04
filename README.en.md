@@ -2,6 +2,8 @@
 
 [中文](README.md)
 
+**Made by Codex**
+
 Edit existing files in registered DSH workspaces through the browser or a local desktop VSCode window, using the same DSH Web port.
 
 This repository contains the dsh-workspace-files DSH plugin and the DSH HTTP Files VSCode extension. It is a third-party project, separately maintained from DeepSeek Harness.
