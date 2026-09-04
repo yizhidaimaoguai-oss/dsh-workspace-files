@@ -1,0 +1,47 @@
+{
+  "name": "dsh-http-files",
+  "displayName": "DSH HTTP Files",
+  "description": "在本机 VSCode 通过 DSH Web 端口编辑远程工作目录，无需 VSCode Remote SSH。",
+  "version": "1.0.0",
+  "publisher": "ahoge-local",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./extension.cjs",
+  "extensionKind": [
+    "ui"
+  ],
+  "activationEvents": [
+    "onUri",
+    "onFileSystem:dshfs"
+  ],
+  "capabilities": {
+    "virtualWorkspaces": true,
+    "untrustedWorkspaces": {
+      "supported": true
+    }
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "dshHttpFiles.connect",
+        "title": "DSH: 从网页连接工作目录"
+      },
+      {
+        "command": "dshHttpFiles.open",
+        "title": "DSH: 打开已授权工作目录"
+      },
+      {
+        "command": "dshHttpFiles.forget",
+        "title": "DSH: 移除本机连接"
+      }
+    ]
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.cjs"
+  },
+  "license": "MIT"
+}

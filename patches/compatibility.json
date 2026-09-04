@@ -1,0 +1,14 @@
+{
+  "upstream": "https://github.com/deepseek-ai/deepseek-harness",
+  "testedCommit": "dd6322d604e00eec1ba5e0c8541159906a221094a",
+  "testedVersion": "0.1.2-alpha.3",
+  "patch": "dsh-chat-file-opener.patch",
+  "requiredFor": [
+    "Chat answer Markdown file links",
+    "Generated-file buttons opening desktop VSCode"
+  ],
+  "notRequiredFor": [
+    "Browser file manager",
+    "Desktop HTTP filesystem pairing and editing"
+  ]
+}

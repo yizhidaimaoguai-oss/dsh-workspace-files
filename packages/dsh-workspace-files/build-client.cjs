@@ -1,0 +1,1 @@
+const fs=require('node:fs'); const path=require('node:path'); const root=__dirname; const source=fs.readFileSync(path.join(root,'link-target.cjs'),'utf8').replace(/module\.exports = .*;\n?$/, ''); fs.writeFileSync(path.join(root,'client.js'),fs.readFileSync(path.join(root,'client.template.js'),'utf8').replace('/* LINK_TARGET_IMPLEMENTATION */',source));

@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>工作目录文件 · DSH</title><link rel="stylesheet" href="/api/workspace-files/style.css"><script type="module" src="/api/workspace-files/app.js"></script></head>
+<body>
+<header><a class="brand" href="/" target="_blank" rel="noopener">DSH <span> / 文件</span></a><select id="workspace" aria-label="工作目录"></select><a id="vscode-folder" class="button">连接本机 VSCode ↗</a><button id="copy-command">客户端授权</button></header>
+<div class="layout"><aside><div class="tree-tools"><input id="filter" placeholder="筛选当前目录" aria-label="筛选文件"><label><input type="checkbox" id="hidden">隐藏文件</label></div><nav id="breadcrumbs" aria-label="目录路径"></nav><button id="refresh">刷新目录</button><div id="tree" role="list"></div><p id="tree-status"></p></aside>
+<main><div class="filebar"><div class="filename"><strong id="filename">选择一个文件</strong><span id="dirty"></span></div><div class="actions"><button id="reload" disabled>重新读取</button><a id="download" class="button disabled">下载</a><a id="vscode-file" class="button disabled">VSCode ↗</a><button id="save" class="primary" disabled>保存 Ctrl+S</button></div></div>
+<div id="status" role="status" aria-live="polite">正在读取工作目录…</div>
+<div id="empty"><div class="empty-icon">⌘</div><h1>工作目录，随手可编辑</h1><p>从左侧选择文件，在浏览器中编辑保存，或交给本机 VSCode。</p><p>VSCode 和 DSH 使用服务器上的同一份文件。</p></div>
+<div id="editor-wrap" hidden><div id="line-numbers" aria-hidden="true"></div><textarea id="editor" spellcheck="false" wrap="off" aria-label="文件内容"></textarea></div>
+<div id="preview" hidden></div><footer><span id="file-info">UTF-8 文本编辑 · 图片 / PDF 预览</span><span id="ssh-info"></span></footer>
+</main></div>
+<dialog id="discard-dialog"><h2>文件尚未保存</h2><p>继续操作将丢弃当前编辑。也可以先关闭此提示并保存。</p><div><button id="discard-cancel">继续编辑</button><button id="discard-confirm">丢弃编辑并继续</button></div></dialog>
+<dialog id="desktop-dialog"><h2>本机 VSCode</h2><div id="desktop-content"></div><p><button id="desktop-close">关闭</button></p></dialog>
+</body></html>

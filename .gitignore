@@ -1,0 +1,15 @@
+node_modules/
+dist/
+*.vsix
+*.tgz
+*.log
+.env
+.env.*
+!.env.example
+*.local.json
+clients.json
+test-cookie*
+.vscode-test/
+.vscode-test-*/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,8 @@
+# Override the installed plugin row in your DSH profile patch.
+# DSH replaces the complete config object; include all desired values.
+- id: dsh-workspace-files
+  config:
+    maxFileBytes: 2097152
+    maxDownloadBytes: 52428800
+    maxEntries: 2000
+    clientTokenDays: 30

@@ -1,0 +1,52 @@
+{
+  "name": "dsh-workspace-files",
+  "version": "1.0.0",
+  "description": "Browse and edit workspace files through DSH HTTP and local VSCode, including answer file links",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "files.js",
+    "client.js",
+    "public",
+    "cordis.patch.yml",
+    "README.md",
+    "desktop.js",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "node build-client.cjs",
+    "test": "node --test tests/*.test.js tests/*.test.cjs",
+    "prepack": "node build-client.cjs"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-slots",
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-api-session-controller",
+        "@deepseek-ai/dsh-api-workspace-controller"
+      ],
+      "platform": "web"
+    }
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "cordis",
+    "vscode",
+    "remote-files"
+  ]
+}

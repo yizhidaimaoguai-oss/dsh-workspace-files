@@ -1,0 +1,203 @@
+diff --git a/packages/client/ui-chat/README.md b/packages/client/ui-chat/README.md
+index 756b09ee1b..77b82fb02b 100644
+--- a/packages/client/ui-chat/README.md
++++ b/packages/client/ui-chat/README.md
+@@ -76,3 +76,7 @@ None; Chat presentation does not assemble or mutate provider requests.
+ None.
+ 
+ </details>
++
++## Browser file opening
++
++An optional browser plugin can provide chatWorkspaceOpener to open produced files and supported Markdown file destinations using the owning Session. The provider identifies supported destinations and enforces workspace access; without it, produced files retain the Host opener and Markdown retains its URL allowlist.
+diff --git a/packages/client/ui-chat/README.zh.md b/packages/client/ui-chat/README.zh.md
+index 6e6278c5fe..7e1db315eb 100644
+--- a/packages/client/ui-chat/README.zh.md
++++ b/packages/client/ui-chat/README.zh.md
+@@ -76,3 +76,7 @@ Chat 会在历史前插与 renderer 重新挂载时恢复语义锚点。读者
+ 无。
+ 
+ </details>
++
++## 浏览器文件打开
++
++浏览器插件可提供 chatWorkspaceOpener，按所属会话打开生成文件及其支持的 Markdown 文件链接。提供者负责识别目标和限制工作目录访问；未提供时，生成文件沿用 Host 打开方式，Markdown 沿用 URL 白名单。
+diff --git a/packages/client/ui-chat/src/client/apply.ts b/packages/client/ui-chat/src/client/apply.ts
+index a23ada43d7..4cd6cd6745 100644
+--- a/packages/client/ui-chat/src/client/apply.ts
++++ b/packages/client/ui-chat/src/client/apply.ts
+@@ -116,8 +116,20 @@ export function apply(ctx: Context): void {
+             actions.select(target)
+             ctx.layout.openDetails()
+           },
+-          fileMentions: (owner: TurnTailOwnerProps) => ctx.get('chatFileMentions')?.forClosing(owner),
++          fileMentions: (owner: TurnTailOwnerProps) => {
++            const mentions = ctx.get('chatFileMentions')?.forClosing(owner)
++            const opener = ctx.get('chatWorkspaceOpener')
++            if (opener === undefined) return mentions
++            return {
++              resolve: (value: string) => mentions?.resolve(value),
++              resolveLink: (value: string) => opener.accepts(value)
++                ? { open: () => { owner.openFile(value) }, label: value, title: value }
++                : undefined,
++            }
++          },
+           openFile: async (path) => {
++            const opener = ctx.get('chatWorkspaceOpener')
++            if (opener !== undefined) return opener.open(sessionId, path)
+             const cwd = ctx.sessions.list.getSnapshot().byId[sessionId]?.cwd
+             const result = await ctx.remote.session.openWorkspacePath({
+               path: resolveWorkspacePath(cwd, path),
+diff --git a/packages/client/ui-chat/src/client/contract/slots.ts b/packages/client/ui-chat/src/client/contract/slots.ts
+index 14fe308321..6241b81d21 100644
+--- a/packages/client/ui-chat/src/client/contract/slots.ts
++++ b/packages/client/ui-chat/src/client/contract/slots.ts
+@@ -1,5 +1,6 @@
+ /** Chat-owned Slot declarations and composed component props. */
+ import type { MessageId } from '@deepseek-ai/dsh-llm/brand'
++import type { SessionId } from '@deepseek-ai/dsh-session/types'
+ import type {
+   ConversationTurnDataMap, MessageImageLoader, MessageImagesOwnerProps, RenderMessageImages, TurnLocation,
+ } from '@deepseek-ai/dsh-client-ui-conversation/client'
+@@ -46,6 +47,13 @@ declare module '@deepseek-ai/cordis' {
+   interface Context {
+     /** Optional prose file-mention provider. */
+     chatFileMentions: ChatFileMentions
++    /** Optional browser-side file opener; providers keep workspace access policy. */
++    chatWorkspaceOpener: {
++      /** Whether an authored Markdown destination names a supported file. */
++      accepts(value: string): boolean
++      /** Open a file relative to this Session, rejecting inaccessible destinations. */
++      open(sessionId: SessionId, path: string): Promise<void>
++    }
+   }
+ }
+ 
+diff --git a/packages/client/ui-chat/tests/apply-inject.client.spec.tsx b/packages/client/ui-chat/tests/apply-inject.client.spec.tsx
+index 98b477c57f..1d3600b122 100644
+--- a/packages/client/ui-chat/tests/apply-inject.client.spec.tsx
++++ b/packages/client/ui-chat/tests/apply-inject.client.spec.tsx
+@@ -186,3 +186,23 @@ describe('Chat inject API', () => {
+     await b.runtime.dispose()
+   })
+ })
++
++it('routes produced files and authored destinations to the browser opener with the owning Session', async () => {
++  const b = await bench()
++  const open = vi.fn(async (_sessionId: SessionId, _path: string) => {})
++  b.runtime.ctx.provide('chatWorkspaceOpener', { accepts: value => value.startsWith('src/'), open })
++  const { injected } = b.chatViewApi(ROOT)
++  await injected.openFile('src/a.ts')
++  expect(open).toHaveBeenCalledWith(ROOT, 'src/a.ts')
++  expect(b.openWorkspacePath).not.toHaveBeenCalled()
++  const openFile = vi.fn()
++  const owner = { openFile } as unknown as Parameters<typeof injected.fileMentions>[0]
++  const mentions = injected.fileMentions(owner)!
++  expect(mentions.resolve('unknown')).toBeUndefined()
++  expect(mentions.resolveLink?.('https://example.com')).toBeUndefined()
++  mentions.resolveLink?.('src/a.ts#L4')?.open()
++  expect(openFile).toHaveBeenCalledWith('src/a.ts#L4')
++  open.mockRejectedValueOnce(new Error('workspace refused'))
++  await expect(injected.openFile('../outside')).rejects.toThrow('workspace refused')
++  await b.runtime.dispose()
++})
+diff --git a/packages/client/ui-primitives/README.md b/packages/client/ui-primitives/README.md
+index 525c2c01ec..3061b4f4c1 100644
+--- a/packages/client/ui-primitives/README.md
++++ b/packages/client/ui-primitives/README.md
+@@ -119,3 +119,7 @@ These limits define how the atoms behave at the edges; they are current package
+ None.
+ 
+ </details>
++
++## Browser file opening
++
++MarkdownFileMentions.resolveLink optionally turns an authored Markdown destination into a file-opening button. The owner supplies the callback, accessible label, and title; unresolved destinations retain the ordinary URL allowlist. The primitive does not navigate to file URLs or access the filesystem.
+diff --git a/packages/client/ui-primitives/README.zh.md b/packages/client/ui-primitives/README.zh.md
+index b2758c5de1..3e1e843425 100644
+--- a/packages/client/ui-primitives/README.zh.md
++++ b/packages/client/ui-primitives/README.zh.md
+@@ -119,3 +119,7 @@ kind: "package-library"
+ 无。
+ 
+ </details>
++
++## 浏览器文件打开
++
++MarkdownFileMentions.resolveLink 可选地将 Markdown 链接目标渲染为文件打开按钮。调用方提供回调、无障碍标签及标题；未解析的目标沿用普通 URL 白名单。组件本身不会跳转到 file URL 或访问文件系统。
+diff --git a/packages/client/ui-primitives/src/markdown/render.tsx b/packages/client/ui-primitives/src/markdown/render.tsx
+index 950d85be52..3d9f671a60 100644
+--- a/packages/client/ui-primitives/src/markdown/render.tsx
++++ b/packages/client/ui-primitives/src/markdown/render.tsx
+@@ -119,6 +119,12 @@ export interface MarkdownFileMentions {
+    * undefined when the token names no known file — it then stays inert code.
+    */
+   resolve(value: string): { open: () => void; label: string; title: string } | undefined
++  /**
++   * Resolve an authored Markdown destination without navigating to a file URL.
++   * @param value - normalized Markdown destination.
++   * @returns File opener, or undefined to retain the ordinary URL allowlist.
++   */
++  resolveLink?(value: string): { open: () => void; label: string; title: string } | undefined
+ }
+ 
+ /**
+@@ -287,7 +293,7 @@ function renderNode(node: Md.RootContent, key: Key, context: MarkdownRenderConte
+     case 'table':
+       return renderTable(node, key, context)
+     case 'link':
+-      return renderAnchor(node.url, renderChildren(node.children, { ...context, inLink: true }), key)
++      return renderAnchor(node.url, renderChildren(node.children, { ...context, inLink: true }), key, context)
+     case 'linkReference':
+       return renderLinkReference(node, key, context)
+     case 'image':
+@@ -482,8 +488,13 @@ function renderSafeLink(href: string, children: ReactNode[], key: Key): ReactNod
+ }
+ 
+ /** Anchor over a parsed markdown destination, which hast normalized before the allowlist saw it. */
+-function renderAnchor(url: string, children: ReactNode[], key: Key): ReactNode {
+-  return renderSafeLink(normalizeUri(url), children, key)
++function renderAnchor(url: string, children: ReactNode[], key: Key, context: MarkdownRenderContext): ReactNode {
++  const href = normalizeUri(url)
++  const file = context.fileMentions?.resolveLink?.(href)
++  if (file !== undefined) {
++    return <button key={key} type="button" className={css.fileMention} title={file.title} aria-label={file.label} onClick={file.open}>{children}</button>
++  }
++  return renderSafeLink(href, children, key)
+ }
+ 
+ /**
+@@ -539,7 +550,7 @@ function renderLinkReference(
+     // not an anchor, so mentions inside it stay live.
+     return <Fragment key={key}>{'['}{renderChildren(node.children, context)}{referenceSuffix(node)}</Fragment>
+   }
+-  return renderAnchor(definition.url, renderChildren(node.children, { ...context, inLink: true }), key)
++  return renderAnchor(definition.url, renderChildren(node.children, { ...context, inLink: true }), key, context)
+ }
+ 
+ function renderImageReference(
+diff --git a/packages/client/ui-primitives/tests/markdown.client.spec.tsx b/packages/client/ui-primitives/tests/markdown.client.spec.tsx
+index eb6b450924..31cbdf4f7e 100644
+--- a/packages/client/ui-primitives/tests/markdown.client.spec.tsx
++++ b/packages/client/ui-primitives/tests/markdown.client.spec.tsx
+@@ -549,3 +549,20 @@ describe('JsonBlock', () => {
+     expect(body).toContain('截断')
+   })
+ })
++
++it('opens authored file links through the injected owner while preserving external links and unsafe filtering', () => {
++  const opened: string[] = []
++  const source = '[file](src/test.ts#L4) and [ref][file-ref] and [web](https://example.com) and [unsafe](javascript:alert%281%29)\n\n[file-ref]: /project/a.md'
++  const { container } = render(<MarkdownText text={source} fileMentions={{
++    resolve: () => undefined,
++    resolveLink: value => value.startsWith('src/') || value.startsWith('/project/')
++      ? { title: value, label: value, open: () => { opened.push(value) } }
++      : undefined,
++  }} />)
++  fireEvent.click(screen.getByRole('button', { name: 'src/test.ts#L4' }))
++  fireEvent.click(screen.getByRole('button', { name: '/project/a.md' }))
++  expect(opened).toEqual(['src/test.ts#L4', '/project/a.md'])
++  expect(container.querySelectorAll('a')).toHaveLength(1)
++  expect(screen.getByRole('link', { name: 'web' }).getAttribute('href')).toBe('https://example.com')
++  expect(container.textContent).toBe('file and ref and web and unsafe')
++})
